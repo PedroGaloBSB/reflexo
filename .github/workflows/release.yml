@@ -1,0 +1,104 @@
+name: release
+
+# Publica uma release quando uma tag v*.*.* é empurrada.
+#
+# Três jobs, nesta ordem:
+#   1. test   — roda a suíte no Windows, onde o teste de subsistema PE
+#               (main_windows_test.go) consegue de fato executar. Sem isso a
+#               garantia de "binário sem janela de console" deixaria de ser
+#               coberta.
+#   2. build  — cross-compila os 5 alvos. O -H windowsgui é flag do linker
+#               Windows, e ela NÃO é ignorada nos outros alvos: com GOOS=linux
+#               e essa flag, o linker produz um PE (MZ) em vez de um ELF. O
+#               build passa e o artefato está errado — por isso a flag é
+#               condicional, e não uma questão de estilo.
+#   3. release — junta os artefatos, gera o SHA256SUMS.txt e publica.
+#
+# O SHA256SUMS.txt é gerado aqui, nunca à mão. Um checksum escrito manualmente
+# é o passo que alguém esquece, e aí a garantia que o ADR-0005 promete para
+# compensar a falta de assinatura de código simplesmente não existe.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test
+        run: go test -count=1 ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: windows, goarch: amd64, asset: reflexo-windows-amd64.exe }
+          - { goos: windows, goarch: 386, asset: reflexo-windows-386.exe }
+          - { goos: linux, goarch: amd64, asset: reflexo-linux-amd64 }
+          # linux/arm64 NÃO está aqui de propósito: o upstream não publica uma
+          # build Linux aarch64 (ver internal/catalog/catalog.go). Um binário
+          # reflexo-linux-arm64 compilaria e seria publicado, mas ao rodar
+          # falharia com "plataforma não suportada" — um artefato quebrado com
+          # aparência de sucesso. Se o upstream publicar a build, adicione aqui.
+          - { goos: darwin, goarch: amd64, asset: reflexo-macos-amd64 }
+          - { goos: darwin, goarch: arm64, asset: reflexo-macos-arm64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          version="${GITHUB_REF_NAME}"
+          ldflags="-s -w -X main.version=${version}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            ldflags="-s -w -H windowsgui -X main.version=${version}"
+          fi
+          mkdir -p dist
+          go build -trimpath -ldflags "$ldflags" -o "dist/${{ matrix.asset }}" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: SHA256SUMS.txt
+        run: |
+          cd dist
+          ls -1
+          sha256sum reflexo-* > SHA256SUMS.txt
+          echo "--- SHA256SUMS.txt ---"
+          cat SHA256SUMS.txt
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

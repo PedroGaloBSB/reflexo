@@ -1,0 +1,20 @@
+# Build
+/dist/
+/reflexo.exe
+*.exe
+
+# ATENCAO: rsrc.syso NAO e ignorado de proposito.
+# Ele e o recurso de icone que o Go linka no executavel. Sem ele no
+# repositorio, o binario de release sai sem icone no Windows. Regenerar com:
+#   go install github.com/akavel/rsrc@latest
+#   rsrc -ico assets\icon\icon.ico -o rsrc.syso
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini

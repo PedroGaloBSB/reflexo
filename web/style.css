@@ -1,0 +1,182 @@
+:root {
+  --bg: #0f1115;
+  --card: #171a21;
+  --line: #262b36;
+  --fg: #e8eaf0;
+  --muted: #9aa3b2;
+  --accent: #5b8cff;
+
+  /* Um estado por severidade. A cor sozinha nunca carrega o significado:
+     cada estado também muda o texto do selo, para daltonismo. */
+  --idle: #7c8798;
+  --action: #e0a33a;
+  --warn: #e0705f;
+  --ready: #4cc38a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.6 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px 24px 32px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.mark {
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.meta, .hint, .note, .foot {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 26px 28px;
+}
+
+/* selo de estado */
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  margin-bottom: 14px;
+}
+.badge[data-sev="0"] { color: var(--idle); }
+.badge[data-sev="1"] { color: var(--action); }
+.badge[data-sev="2"] { color: var(--warn); }
+.badge[data-sev="3"] { color: var(--ready); }
+
+h1 {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 10px;
+}
+
+.detail {
+  margin: 0 0 18px;
+  color: #c3cad8;
+}
+
+.steps {
+  margin: 0 0 22px;
+  padding-left: 22px;
+}
+.steps li {
+  margin-bottom: 9px;
+}
+.steps li::marker {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  padding: 11px 20px;
+  cursor: pointer;
+  transition: background .15s, opacity .15s;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #fff;
+}
+button.primary:hover:not(:disabled) { background: #4a7bf0; }
+
+button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* O botão da demonstração é deliberadamente secundário: a ação principal de
+   quem tem um celular continua sendo espelhar. */
+button.ghost {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--line);
+}
+button.ghost:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+/* O aviso de demonstração precisa ser impossível de não ler. Uma faixa âmbar
+   acima do conteúdo, e não um detalhe no rodapé. */
+.demo-banner {
+  margin: 0 0 18px;
+  padding: 10px 13px;
+  border-radius: 9px;
+  border: 1px solid #d9a441;
+  background: rgba(217, 164, 65, .12);
+  color: #8a6216;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* barra de progresso da instalação */
+.bar {
+  height: 6px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 18px 0 14px;
+}
+.fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width .25s ease;
+}
+
+.note { margin: 0; }
+
+.foot {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  line-height: 1.7;
+}
+
+.error { color: var(--warn); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

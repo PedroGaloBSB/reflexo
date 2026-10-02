@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reflexo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!--
+  This file holds structure only. Every user-facing word is fetched from the Go
+  server and applied to the [data-i18n] elements below, so the text is
+  translated in one place (internal/i18n) rather than duplicated here.
+  The Portuguese literals inside are just what the page shows for the few
+  milliseconds before the first state arrives; TestUIStringsCoverMarkup fails
+  if a data-i18n key is missing from the catalog.
+-->
+
+<main class="wrap">
+
+  <header class="head">
+    <div class="mark">Reflexo</div>
+    <div class="meta" id="meta" data-i18n="ui.connecting">conectando…</div>
+  </header>
+
+  <!-- Etapa 1: instalação única do scrcpy -->
+  <section class="card setup" id="setup" hidden>
+    <h1 id="setup-title" data-i18n="setup.preparing">Preparando o Reflexo</h1>
+    <p class="detail" id="setup-msg" data-i18n="setup.preparing_detail">Iniciando…</p>
+    <div class="bar" id="setup-bar" hidden><div class="fill" id="setup-fill"></div></div>
+    <p class="note" data-i18n="setup.note">Esta etapa acontece uma única vez.</p>
+  </section>
+
+  <!-- Etapa 2: instrução contextual -->
+  <section class="card" id="main" hidden>
+    <div class="badge" id="badge">…</div>
+    <h1 id="headline">…</h1>
+    <p class="detail" id="detail"></p>
+
+    <ol class="steps" id="steps"></ol>
+
+    <!--
+      The demonstration banner. It is not decoration: without it, a visitor who
+      starts the demonstration has every reason to think the product is
+      describing their own phone.
+    -->
+    <p class="demo-banner" id="demo-banner" hidden data-i18n="ui.demo_banner">Demonstração</p>
+
+    <div class="actions">
+      <button id="start" class="primary" disabled data-i18n="ui.start">Iniciar espelhamento</button>
+      <button id="demo" class="ghost" hidden data-i18n="ui.demo_try">Veja como funciona</button>
+      <span class="hint" id="hint"></span>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span data-i18n="ui.attribution_prefix">Espelhamento por</span>
+    <strong>scrcpy</strong>
+    <span data-i18n="ui.attribution_suffix">de Romain Vimont, sob Apache 2.0.</span>
+    <span data-i18n="ui.non_affiliation">Reflexo é um projeto independente.</span>
+    <span id="ver"></span>
+  </footer>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
