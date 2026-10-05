@@ -433,3 +433,75 @@ sintaxe de expressões `${{ }}`, nem o comportamento real do `upload-artifact` /
 `download-artifact` / `gh-release`. Essas são as partes que só o GitHub
 confirma. O erro mais comum nesse tipo de pipeline — permissão de upload de
 asset da release — **não é visível em teste local nenhum**.
+
+### ARCH-0005 - Saude do adb e recuperacao automatica
+
+Sessao real perdida em 2026-10-05, registrada no log:
+
+```
+10:40:21  aparelho: dq7ppfnjr84tjnuw estado=device
+10:40:23  espelhamento iniciado
+10:46:15  espelhamento terminou com erro: exit status 2
+10:46:20  ERROR  adb devices falhou: * daemon not running
+10:46:20  instrucao: [warn] Nao foi possivel executar o ADB
+```
+
+O celular nunca recusou nada e nunca perdeu autorizacao. O servidor do adb
+morreu, o scrcpy perdeu o transporte e saiu com codigo 2. A partir dai todo
+poll falhava, e o Reflexo mostrava "ADB indisponivel" para sempre, sem tentar
+consertar nada. **Reiniciar o Reflexo era a unica solucao, e nada na interface
+dizia isso.**
+
+O que foi feito (`internal/device/health.go`, `internal/app/health.go`):
+
+- **Classificacao da falha.** `daemon not running` e diferente de um timeout e
+  diferente de um handshake falhando. Cada texto foi lido de uma falha real, nao
+  de documentacao.
+- **Recuperacao nao destrutiva.** `FailureKind.NeedsRestart()` retorna sempre
+  `false`, e isso e decisao. O servidor em tcp:5037 e um singleton da maquina,
+  compartilhado com Android Studio, VS Code e qualquer ferramenta de fabricante.
+  Derruba-lo para tratar o nosso sintoma quebraria programas que o usuario nao
+  pediu para tocarmos - o oposto do AGENTS.md §4. Medido: um daemon travado
+  responde `adb start-server` com "could not read ok from ADB Server", e insistir
+  em loop faz a porta nunca assentar.
+- **Limiar de duas falhas.** Um poll ruim e ruido: celular desconectado, uma
+  transacao USB repetindo, uma hesitacao. Duas seguidas sao um padrao.
+- **Backoff 5s/10s/20s/40s/60s.** Recupero a cada 2s seria trinta reinicios por
+  minuto.
+- **Estado proprio na interface.** `guide.adb_recovering.*` diz "Reconectando ao
+  celular" durante a recuperacao. A mensagem antiga mandava o usuario reinstalar
+  driver que estava instalado.
+- **Lista vazia suspeita.** Logo apos a queda do espelho, `adb devices` pode sair
+  com codigo zero e imprimir nada — saida byte-a-byte igual a de uma mesa sem
+  celular. `suspiciousEmpty()` confere o adb de novo antes de aceitar.
+
+**Cuidado:** a recuperacao nunca pode afirmar sucesso que nao aconteceu. Quando
+`Recover` falha, o estado e o de fim de linha, nao o de "reconectando".
+
+### RESIDUO CONHECIDO - daemon do adb lento nesta maquina
+
+Medido em 2026-10-05, e **nao e defeito do Reflexo**:
+
+- `adb start-server` retorna em ~1,5s com `protocol fault: connection reset`
+  e exit nao-zero, mesmo com a porta 5037 livre.
+- O processo do daemon sobe, mas leva **~8s** para efetivamente escutar a 5037.
+- Durante essa janela, qualquer cliente recebe `connection reset`.
+- `netstat` chegou a mostrar a 5037 em `LISTENING` com o cliente ja tendo
+  desistido, e o `adb` seguinte ainda falhou — o handshake depende de mais que o
+  bind.
+
+Consequencia pratica: num start a frio desta maquina, o Reflexo ve duas falhas,
+tenta recuperar, e o `Recover` falha porque o daemon ainda esta subindo. A
+recuperacao esta correta; o ambiente e lento demais para ela.
+
+O que falta decidir, e e escolha de produto:
+
+1. **Aumentar o tempo de espera do primeiro poll**, dando ao daemon tempo de
+   subir antes de declarar falha.
+2. **Nao tentar recuperar nos primeiros N segundos** apos o inicio, porque o
+   delay e esperado e nao e sintoma.
+3. Aceitar e documentar, ja que `adb devices` no primeiro poll subsequente
+   funciona.
+
+Nenhuma das tres foi implementada. Medir em outras maquinas antes de escolher:
+isto pode ser especifico deste hardware.

@@ -124,9 +124,13 @@ var english = Catalog{
 	"ui.attribution_prefix": "Mirroring by",
 	"ui.attribution_suffix": "— Romain Vimont, Apache 2.0.",
 	"ui.non_affiliation":    "Reflexo is an independent project, not affiliated with scrcpy.",
-	"ui.demo_banner":        "Demonstration — no phone is being used.",
-	"ui.demo_try":           "See how it works",
-	"ui.demo_stop":          "Stop the demonstration",
+
+	"guide.adb_recovering.headline": "Reflexo is reconnecting to the phone",
+	"guide.adb_recovering.detail":   "The connection to the phone dropped. Reflexo is restarting it on its own — this usually takes a few seconds and your phone is fine.",
+	"guide.adb_recovering.step1":    "Wait a few seconds. No need to unplug anything.",
+	"ui.demo_banner":                "Demonstration — no phone is being used.",
+	"ui.demo_try":                   "See how it works",
+	"ui.demo_stop":                  "Stop the demonstration",
 
 	// errors, mapped from internal failures in app.friendlyError
 	"error.certificate": "Could not verify the authenticity of the internet connection. " +
@@ -254,9 +258,13 @@ var portugueseBrazil = Catalog{
 	"ui.attribution_prefix": "Espelhamento por",
 	"ui.attribution_suffix": "— Romain Vimont, Apache 2.0.",
 	"ui.non_affiliation":    "Reflexo é um projeto independente, sem afiliação com o scrcpy.",
-	"ui.demo_banner":        "Demonstração — nenhum celular está sendo usado.",
-	"ui.demo_try":           "Veja como funciona",
-	"ui.demo_stop":          "Parar a demonstração",
+
+	"guide.adb_recovering.headline": "Reconectando ao celular",
+	"guide.adb_recovering.detail":   "A conexão com o celular caiu. O Reflexo está resolvendo sozinho — costuma levar alguns segundos, e o celular está tudo bem.",
+	"guide.adb_recovering.step1":    "Espere alguns segundos. Não precisa desconectar nada.",
+	"ui.demo_banner":                "Demonstração — nenhum celular está sendo usado.",
+	"ui.demo_try":                   "Veja como funciona",
+	"ui.demo_stop":                  "Parar a demonstração",
 
 	"error.certificate": "Não foi possível verificar a autenticidade da conexão com a internet. " +
 		"Em rede corporativa isso costuma ser um proxy que inspeciona o download.",

@@ -91,6 +91,16 @@ type Situation struct {
 	// ADBAvailable reports whether the adb binary could be executed at all.
 	// False usually means the driver could not be installed.
 	ADBAvailable bool
+
+	// ADBRecovering reports that Reflexo is restarting the adb server right
+	// now, because it stopped answering.
+	//
+	// It is a separate state rather than a flavour of ADBAvailable because
+	// the two need different words. "ADB indisponível" tells the user to give
+	// up; "reiniciando a conexão" tells them to wait three seconds. Showing
+	// the first one while a restart is in flight is how a transient hiccup
+	// becomes a support ticket.
+	ADBRecovering bool
 }
 
 // Of returns the instruction for a situation, in the given language.
@@ -99,6 +109,11 @@ type Situation struct {
 // user to start mirroring a phone other than the one they are holding.
 func Of(s Situation, lang i18n.Lang) Instruction {
 	if !s.ADBAvailable {
+		// Recovery in flight beats the give-up message. The restart is
+		// already happening, and saying so costs the user nothing.
+		if s.ADBRecovering {
+			return adbRecovering(lang)
+		}
 		return adbUnavailable(lang)
 	}
 
@@ -151,6 +166,24 @@ func adbUnavailable(lang i18n.Lang) Instruction {
 			"guide.adb_unavailable.step1",
 			"guide.adb_unavailable.step2",
 			"guide.adb_unavailable.step3",
+		),
+	}
+}
+
+// adbRecovering is shown while Reflexo restarts the adb server.
+//
+// The tone is deliberate. Nothing is wrong with the user's phone and nothing is
+// wrong with their cable, and the previous behaviour — "ADB indisponível", with
+// instructions about drivers — sent people off to reinstall things that were
+// already installed. Here the honest thing to say is: Reflexo noticed, Reflexo
+// is handling it, wait.
+func adbRecovering(lang i18n.Lang) Instruction {
+	return Instruction{
+		Severity: SeverityWarn,
+		Headline: i18n.T(lang, "guide.adb_recovering.headline"),
+		Detail:   i18n.T(lang, "guide.adb_recovering.detail"),
+		Steps: steps(lang,
+			"guide.adb_recovering.step1",
 		),
 	}
 }

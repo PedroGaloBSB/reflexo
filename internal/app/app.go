@@ -73,6 +73,11 @@ type State struct {
 	// Running reports whether a scrcpy process is currently mirroring.
 	Running bool `json:"running"`
 
+	// ADBRecovering reports that Reflexo is restarting the adb server after it
+	// stopped answering. The page needs it so the screen can say what is being
+	// done instead of showing the same dead-end message it always showed.
+	ADBRecovering bool `json:"adbRecovering"`
+
 	// Demo reports that the guidance on screen comes from the demonstration
 	// rather than from a real phone. The page has to say so: a visitor who
 	// thinks the product is talking about their own phone has been misled by
@@ -124,6 +129,22 @@ type App struct {
 	// Polling runs every 2 seconds, so logging every result would produce 1800
 	// identical lines an hour and bury the one line that matters.
 	lastSig string
+
+	// adbFailures counts consecutive polls in which adb could not be reached.
+	// adbRecovering is true while a restart is in flight; lastRecovery and
+	// recoveryTried drive the backoff, and mirrorLostAt remembers when the
+	// mirror died so a suspicious empty list can be recognised.
+	//
+	// These exist because adb used to fail silently and permanently. The UI
+	// said "ADB unavailable" and stayed there while a phone that worked
+	// perfectly sat on the desk. See internal/device/health.go.
+	startedAt     time.Time
+	adbFailures   int
+	adbRecovering bool
+	adbKind       device.FailureKind
+	lastRecovery  time.Time
+	recoveryTried int
+	mirrorLostAt  time.Time
 
 	// lastDeviceSig does the same for the raw adb device list, so the log
 	// shows when a cable was plugged or unplugged even when the resulting
@@ -182,8 +203,9 @@ func New(dataDir string) *App {
 	lang := i18n.Detect()
 
 	a := &App{
-		lang:  lang,
-		ready: make(chan struct{}),
+		lang:      lang,
+		ready:     make(chan struct{}),
+		startedAt: time.Now(),
 		state: State{
 			Setup:     "installing",
 			SetupMsg:  i18n.T(lang, "setup.preparing_detail"),
@@ -440,20 +462,32 @@ func (a *App) Refresh(ctx context.Context) {
 	found := a.gather(ctx)
 
 	if found.err != nil {
+		// adb itself is unreachable. This is not "no phone": it is the state
+		// that used to dead-end the user, and checkADB decides whether to fix
+		// it or merely report it.
 		a.logDevices(nil, found.err)
-		a.apply(guide.Of(guide.Situation{ADBAvailable: false}, a.lang))
+		situation := a.checkADB(ctx, nil, found.err)
+		a.apply(guide.Of(situation, a.lang))
 		a.setDemoState(false, true, false)
 		return
 	}
 
+	// adb answered, so the situation is whatever the devices say — unless the
+	// list is empty moments after the mirror died, which checkADB knows to
+	// distrust.
 	if found.demo {
 		// The script is not logged as a real device. Writing DEMO0001 into the
 		// support log would put a fabricated phone next to real diagnostics,
 		// and the whole value of that file is that it can be believed.
+		//
+		// The demo also skips checkADB entirely: adb was never involved, so
+		// there is no health to judge and nothing to recover.
 		a.apply(guide.Of(situationFor(found.devices), a.lang))
 		a.setDemoState(true, false, found.mirroring)
 		return
 	}
+
+	situation := a.checkADB(ctx, found.devices, nil)
 
 	// Load properties for the device we are about to describe. Only the first
 	// is considered: Reflexo v1 mirrors one device at a time (ADR-0004).
@@ -464,7 +498,7 @@ func (a *App) Refresh(ctx context.Context) {
 	}
 
 	a.logDevices(found.devices, nil)
-	a.apply(guide.Of(situationFor(found.devices), a.lang))
+	a.apply(guide.Of(situation, a.lang))
 	a.setDemoState(false, len(found.devices) == 0, false)
 }
 
@@ -703,6 +737,10 @@ func (a *App) Start(ctx context.Context) error {
 		// have carried scrcpy's own error is already gone.
 		if waitErr != nil {
 			log.Warnf("espelhamento terminou com erro: %v", waitErr)
+			// Exit status 2 is scrcpy saying the device went away. Remembering
+			// it is what lets the next poll tell "the phone was unplugged"
+			// apart from "adb died", which produce identical output.
+			a.noteMirrorLost()
 		} else {
 			log.Infof("espelhamento encerrado (janela fechada pelo usuário)")
 		}
