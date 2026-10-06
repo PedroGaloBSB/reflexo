@@ -78,6 +78,11 @@ type State struct {
 	// done instead of showing the same dead-end message it always showed.
 	ADBRecovering bool `json:"adbRecovering"`
 
+	// Waiting reports that Reflexo is still warming up and no honest verdict is
+	// possible yet. While true, the page shows a moving progress bar rather
+	// than maxing out an empty screen or a false alarm.
+	Waiting bool `json:"waiting"`
+
 	// Demo reports that the guidance on screen comes from the demonstration
 	// rather than from a real phone. The page has to say so: a visitor who
 	// thinks the product is talking about their own phone has been misled by
@@ -469,6 +474,10 @@ func (a *App) Refresh(ctx context.Context) {
 		situation := a.checkADB(ctx, nil, found.err)
 		a.apply(guide.Of(situation, a.lang))
 		a.setDemoState(false, true, false)
+		a.mu.Lock()
+		a.state.Waiting = situation.Starting
+		a.state.ADBRecovering = situation.ADBRecovering
+		a.mu.Unlock()
 		return
 	}
 
@@ -484,6 +493,10 @@ func (a *App) Refresh(ctx context.Context) {
 		// there is no health to judge and nothing to recover.
 		a.apply(guide.Of(situationFor(found.devices), a.lang))
 		a.setDemoState(true, false, found.mirroring)
+		a.mu.Lock()
+		a.state.Waiting = false
+		a.state.ADBRecovering = false
+		a.mu.Unlock()
 		return
 	}
 
@@ -500,6 +513,10 @@ func (a *App) Refresh(ctx context.Context) {
 	a.logDevices(found.devices, nil)
 	a.apply(guide.Of(situation, a.lang))
 	a.setDemoState(false, len(found.devices) == 0, false)
+	a.mu.Lock()
+	a.state.Waiting = situation.Starting
+	a.state.ADBRecovering = situation.ADBRecovering
+	a.mu.Unlock()
 }
 
 // listReal asks adb for the device list, tolerating adb not existing yet.
@@ -759,6 +776,12 @@ func launchScrcpy(layout *fetch.Layout, args []string) (*exec.Cmd, error) {
 	// overrides passed on our own command line.
 	cmd := exec.Command(layout.Binary, args...)
 	cmd.Dir = layout.Root
+
+	// scrcpy is a console program. Without this, every mirroring launch pops a
+	// visible black terminal that never belongs on screen — the per-process
+	// copy of the incident ADR-0009 fixed at the launcher level. On non-Windows
+	// this is nil, so behavior there is unchanged.
+	cmd.SysProcAttr = hideConsole()
 
 	// scrcpy locates scrcpy-server next to its own executable; being explicit
 	// removes any dependence on the working directory.

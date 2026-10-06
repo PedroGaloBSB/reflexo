@@ -101,6 +101,12 @@ type Situation struct {
 	// the first one while a restart is in flight is how a transient hiccup
 	// becomes a support ticket.
 	ADBRecovering bool
+
+	// Starting reports that Reflexo is still warming up — on a cold start the
+	// adb daemon can take several seconds to answer, and during that window
+	// presenting "ADB indisponível" or an empty "no phone" telling lands on
+	// every first impression. It is the neutral wait, not a broken state.
+	Starting bool
 }
 
 // Of returns the instruction for a situation, in the given language.
@@ -108,6 +114,13 @@ type Situation struct {
 // Only the first device is considered: picking one arbitrarily would send the
 // user to start mirroring a phone other than the one they are holding.
 func Of(s Situation, lang i18n.Lang) Instruction {
+	// Starting wins over everything: while Reflexo is still warming up there
+	// is no honest verdict to render, and a confident wrong one is worse than
+	// an honest wait.
+	if s.Starting {
+		return starting(lang)
+	}
+
 	if !s.ADBAvailable {
 		// Recovery in flight beats the give-up message. The restart is
 		// already happening, and saying so costs the user nothing.
@@ -184,6 +197,25 @@ func adbRecovering(lang i18n.Lang) Instruction {
 		Detail:   i18n.T(lang, "guide.adb_recovering.detail"),
 		Steps: steps(lang,
 			"guide.adb_recovering.step1",
+		),
+	}
+}
+
+// starting is the neutral waiting state on a cold launch.
+//
+// This is what the screen shows while the adb daemon still cannot be reached
+// because it has not finished coming up — typically several seconds. It must
+// read as "hold on", not as a verdict: it is not "no phone" and it is not
+// "ADB is broken", and a false alarm here would teach the user to panic at
+// every launch.
+func starting(lang i18n.Lang) Instruction {
+	return Instruction{
+		Severity: SeverityIdle,
+		Headline: i18n.T(lang, "guide.starting.headline"),
+		Detail:   i18n.T(lang, "guide.starting.detail"),
+		Steps: steps(lang,
+			"guide.starting.step1",
+			"guide.starting.step2",
 		),
 	}
 }

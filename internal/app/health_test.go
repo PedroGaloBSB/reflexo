@@ -302,9 +302,12 @@ func TestStartupGraceHidesTheExpectedColdStartFailure(t *testing.T) {
 
 	s := a.checkADB(context.Background(), nil, errDeadDaemon)
 
-	if !s.ADBRecovering {
-		t.Error("uma falha de adb no inicio nao foi tratada como esperado; " +
+	if !s.Starting {
+		t.Error("uma falha de adb no inicio nao foi tratada como 'iniciando'; " +
 			"a tela mostraria um erro onde so ha uma inicializacao em andamento")
+	}
+	if s.ADBRecovering {
+		t.Error("ADBRecovering = true durante a janela de inicializacao; deveria ser Starting")
 	}
 
 	a.mu.RLock()

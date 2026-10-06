@@ -106,7 +106,7 @@ func (a *App) checkADB(ctx context.Context, devices []device.Device, listErr err
 	// start, not a fault. Reporting it as one would put "ADB indisponível" on
 	// screen every single launch.
 	if a.withinStartupGrace() {
-		return guide.Situation{ADBRecovering: true}
+		return guide.Situation{Starting: true}
 	}
 
 	// Not enough evidence yet. Report the failure honestly and wait one more

@@ -41,6 +41,14 @@
     <ol class="steps" id="steps"></ol>
 
     <!--
+      Something to show while the adb daemon is still coming up on a cold start.
+      Without it the first second of launch is a dead screen.
+    -->
+    <div class="bar waiting-bar" id="waiting-bar" hidden>
+      <div class="fill indeterminate"></div>
+    </div>
+
+    <!--
       The demonstration banner. It is not decoration: without it, a visitor who
       starts the demonstration has every reason to think the product is
       describing their own phone.

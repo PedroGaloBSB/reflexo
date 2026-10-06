@@ -152,6 +152,7 @@ Nenhuma dependência GPL deve ser introduzida sem revisão explícita.
 | ADR-0008 | Modo demonstração sem celular | ✅ aceito — v1.2 |
 | ADR-0009 | Binário sem janela de console | ✅ aceito — reverte decisão anterior |
 | ADR-0010 | Onde o payload do scrcpy fica | aceito - nunca em pasta sincronizada |
+| ADR-0011 | Depuracao USB como pre-requisito ineliminavel | aceito - reconhecido, documentado e guiado |
 
 ### ADR-0003 — Distribuição pública
 
@@ -347,6 +348,30 @@ manualmente nunca é movida, renomeada ou apagada.
 LGPL: enquanto o download vier do upstream, não há redistribuição. Este ADR
 muda **onde** o payload descansa, não **de onde** ele vem.
 
+### ADR-0011 - Depuração USB e Opções do desenvolvedor no aparelho são requisitos de produto
+
+Decisão: o Reflexo **assume**, documenta e **orienta** — mas **nunca tenta
+eliminar** — o pré-requisito de ter Depuração USB ativada no celular.
+
+Motivos:
+
+1. **Não é limitação do scrcpy, é do Android.** O `adbd` só entra em operação
+   quando a Depuração USB está marcada, e o scrcpy é um cliente ADB. Qualquer
+   fluxo que espelhe pela mesma via falha na mesma parede.
+2. **É modelo de segurança, não inconveniência.** Depuração USB concede
+   controle equivalente a root. Uma forma de espelhar sem ela seria uma falha
+   de segurança no próprio sistema.
+3. **`scrcpy --otg` não espelha.** Injeta toque/teclado via HID sem depuração,
+   mas **não captura a tela**. Para a promessa do Reflexo (ver o aparelho no
+   computador), `--otg` não é alternativa.
+4. **As exceções reais são produtos outros** (Phone Link, DeX, Miracast), com
+   contas e hardware próprios — não cabem em um wrapper de scrcpy.
+
+Consequência para o produto: o que o Reflexo faz é **domar** o requisito —
+explicar, reduzir os passos ao que é realmente necessário no estado atual e
+nunca fingir que ele não existe. Quando o celular está conectado mas sem a
+interface ADB, o caminho é orientar a ativação da depuração, não inventar um
+atilho bypass.
 ### ARCH-0001 — Checks-then-act em código com concorrência
 
 Nenhuma rotina que "lê uma condição e age em cima dela" pode usar dois locks

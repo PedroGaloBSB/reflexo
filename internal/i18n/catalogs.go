@@ -20,6 +20,13 @@ var english = Catalog{
 	"guide.no_device.step4": "Accept the \"Allow USB debugging?\" prompt on the phone.",
 	"guide.no_device.step5": "No prompt? Try another USB port — some front-panel ports only charge.",
 
+	// guide: neutral wait on cold launch
+	"guide.starting.headline": "Getting Reflexo ready",
+	"guide.starting.detail": "Checking for a connected phone. This can take a few seconds — your phone " +
+		"does not need to be fully ready yet.",
+	"guide.starting.step1": "Plug the phone into the computer with a data-capable cable.",
+	"guide.starting.step2": "First use only: enable USB debugging under Settings on the phone.",
+
 	// guide: adb could not run at all
 	"guide.adb_unavailable.headline": "Could not run ADB",
 	"guide.adb_unavailable.detail": "Reflexo could not talk to the Android Debug Bridge. " +
@@ -166,6 +173,13 @@ var portugueseBrazil = Catalog{
 	"guide.no_device.step3": "Desbloqueie a tela, tire o cabo e recoloque.",
 	"guide.no_device.step4": "Aceite o aviso \"Permitir depuração USB?\" que aparecer no celular.",
 	"guide.no_device.step5": "Sem aviso? Troque de porta USB — algumas da frente do computador só carregam.",
+
+	// Estado neutro na inicializacao a frio
+	"guide.starting.headline": "Preparando o Reflexo",
+	"guide.starting.detail": "Procurando um celular conectado. Pode levar alguns segundos — " +
+		"não precisa preparar o celular agora.",
+	"guide.starting.step1": "Conecte o celular ao computador com um cabo de dados.",
+	"guide.starting.step2": "No primeiro uso, ative a Depuração USB em Ajustes no celular.",
 
 	"guide.adb_unavailable.headline": "Não foi possível executar o ADB",
 	"guide.adb_unavailable.detail": "O Reflexo não conseguiu conversar com o Android Debug Bridge. " +

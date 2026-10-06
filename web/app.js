@@ -127,6 +127,10 @@ function renderMain(s) {
   // mistakes it for a report about their own phone.
   $("demo-banner").hidden = !s.demo;
 
+  // While the daemon is still coming up there is no verdict, so show a moving
+  // bar instead of a frozen, empty screen.
+  $("waiting-bar").hidden = !s.waiting;
+
   // The button doubles as the way out, so its label flips with the state.
   const demoBtn = $("demo");
   demoBtn.hidden = !s.demo && !s.canDemo;

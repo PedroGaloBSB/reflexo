@@ -166,6 +166,22 @@ button.ghost:hover:not(:disabled) {
   transition: width .25s ease;
 }
 
+/* A moving slice, for states where there is no percentage to measure.
+   Cycling the width keeps the user staring at movement, which is the entire
+   point when the page would otherwise look dead. */
+.fill.indeterminate {
+  width: 40%;
+  opacity: .75;
+  animation: slide 1.4s ease-in-out infinite;
+}
+@keyframes slide {
+  0% { transform: translateX(-110%); }
+  50% { transform: translateX(160%); }
+  100% { transform: translateX(160%); }
+}
+
+.waiting-bar { margin: 4px 0 18px; }
+
 .note { margin: 0; }
 
 .foot {
