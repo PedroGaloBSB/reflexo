@@ -22,15 +22,18 @@ const tokenLength = 32
 
 // Server exposes the UI over loopback HTTP.
 type Server struct {
-	app   *App
-	web   fs.FS
+	app *App
+	web fs.FS
+	// icon holds the same .ico the Windows shortcut uses, so the browser tab
+	// and the desktop icon cannot drift apart. One source, two consumers.
+	icon  fs.FS
 	addr  string
 	token string
 }
 
 // NewServer prepares the local server. The listener is bound by Start.
-func NewServer(a *App, web fs.FS) *Server {
-	return &Server{app: a, web: web}
+func NewServer(a *App, web, icon fs.FS) *Server {
+	return &Server{app: a, web: web, icon: icon}
 }
 
 // Addr is the address the server is listening on, valid after Start.
@@ -87,10 +90,44 @@ func (s *Server) routes() http.Handler {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	// The favicon sits outside the gate on purpose.
+	//
+	// A browser requests it as a side effect of showing the tab, without the
+	// session token, and the Referer-based fallback the gate relies on is not
+	// something the user controls — browsers are free to trim it. The icon is
+	// the one file here that carries nothing worth protecting: no device
+	// serial, no state, no action. Gating it would buy no security and would
+	// lose the tab icon whenever a browser declines to send a Referer.
+	mux.HandleFunc("GET /favicon.ico", s.handleFavicon)
+
 	// The UI itself, gated by the same token as the API.
 	mux.Handle("GET /", s.gate(http.FileServer(http.FS(s.web))))
 
 	return mux
+}
+
+// handleFavicon serves the application icon to the browser tab.
+//
+// The browser tab is the only part of the window Reflexo owns. The icon in the
+// taskbar belongs to the browser executable, and no amount of work here changes
+// it: making Reflexo own its window is the WebView2 dependency ADR-0002 exists
+// to avoid. What can be fixed is the tab, so that it stops showing a generic
+// globe next to a name the user chose.
+func (s *Server) handleFavicon(w http.ResponseWriter, _ *http.Request) {
+	body, err := fs.ReadFile(s.icon, "assets/icon/icon.ico")
+	if err != nil {
+		// A missing icon must never take the page down with it.
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/x-icon")
+	// The icon changes only when the product's face changes, and the browser
+	// caches favicons aggressively enough that a stale one outlives the session
+	// that asked for it. One day is long enough to help and short enough to
+	// disappear on the next release.
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	_, _ = w.Write(body)
 }
 
 // gate rejects requests that do not carry the session token.

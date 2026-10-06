@@ -33,6 +33,9 @@ import (
 //go:embed all:web
 var webFS embed.FS
 
+//go:embed assets/icon/icon.ico
+var iconFS embed.FS
+
 // version is overridable at build time:
 //
 //	go build -ldflags "-X main.version=1.2.3"
@@ -170,7 +173,7 @@ func run(log *logfile.Logger, noBrowser, demo bool, extra []string) error {
 		log.Infof("demonstração: pedida na linha de comando")
 	}
 
-	srv := app.NewServer(a, sub)
+	srv := app.NewServer(a, sub, iconFS)
 	if err := srv.Start(ctx); err != nil {
 		log.Errorf("não foi possível iniciar o servidor local: %v", err)
 		return err
