@@ -85,6 +85,13 @@ func TestOf(t *testing.T) {
 			}},
 			SeverityWarn,
 		},
+		{
+			// The state ADR-0007 exists for: adb is healthy and honest, the list
+			// is empty, and the phone is physically in the user's hand.
+			"depuracao desligada",
+			Situation{ADBAvailable: true, DebuggingOff: true},
+			SeverityAction,
+		},
 	}
 
 	for _, lang := range i18n.Available() {
@@ -332,5 +339,60 @@ func TestNoDeviceChecksPhoneBeforeCable(t *testing.T) {
 			t.Errorf("%s: o primeiro passo deveria checar a Depuração USB no celular, "+
 				"mas diz %q", lang, in.Steps[0])
 		}
+	}
+}
+
+// TestDebuggingOffIsOnlyClaimedWhenTheBusProvesIt pins the precedence rules
+// around the USB probe.
+//
+// Every row here is a way the new state could overreach. The probe runs on the
+// physical machine, so a mistake in its wiring would show up as "your phone has
+// debugging off" while the user's phone is doing something else entirely — the
+// single most credibility-destroying message this product could print.
+//
+// The rule being defended is narrow on purpose: the claim requires an empty
+// device list, a healthy adb, and a completed warm-up. Anything else belongs to
+// a state that knows more than the USB bus does.
+func TestDebuggingOffIsOnlyClaimedWhenTheBusProvesIt(t *testing.T) {
+	headlineOf := func(s Situation) string {
+		return Of(s, i18n.Available()[0]).Headline
+	}
+
+	claim := headlineOf(Situation{ADBAvailable: true, DebuggingOff: true})
+	plain := headlineOf(Situation{ADBAvailable: true})
+	if claim == plain {
+		t.Fatal("a situacao de depuracao desligada produz a mesma frase de nenhum celular; " +
+			"a mudanca nao chegou a tela")
+	}
+
+	tests := []struct {
+		name string
+		sit  Situation
+	}{
+		{
+			"warm-up wins: the bus is not the story yet",
+			Situation{Starting: true, DebuggingOff: true},
+		},
+		{
+			"adb in trouble wins: the phone may be innocent",
+			Situation{ADBAvailable: false, DebuggingOff: true},
+		},
+		{
+			"a visible phone wins: there is nothing left to explain",
+			Situation{
+				ADBAvailable: true,
+				DebuggingOff: true,
+				Devices:      []device.Device{props(device.StateReady, nil)},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := headlineOf(tt.sit); got == claim {
+				t.Errorf("a situacao renderizou %q, que e a mensagem de depuracao desligada; "+
+					"o estado dominante deveria ter falado", got)
+			}
+		})
 	}
 }

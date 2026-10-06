@@ -148,7 +148,7 @@ Nenhuma dependência GPL deve ser introduzida sem revisão explícita.
 | ADR-0004 | Quantidade de aparelhos simultâneos | ✅ aceito — um por vez |
 | ADR-0005 | Assinatura de código no Windows | aceito - nao assinar (v1) |
 | ADR-0006 | Idioma da interface | ✅ aceito — pt-BR e en, catálogo central |
-| ADR-0007 | Detectar celular conectado com depuração desligada | ⏳ aberto — v1.1 |
+| ADR-0007 | Detectar celular conectado com depuração desligada | ⏳ implementado — Windows; macOS/Linux em aberto |
 | ADR-0008 | Modo demonstração sem celular | ✅ aceito — v1.2 |
 | ADR-0009 | Binário sem janela de console | ✅ aceito — reverte decisão anterior |
 | ADR-0010 | Onde o payload do scrcpy fica | aceito - nunca em pasta sincronizada |
@@ -242,11 +242,67 @@ cabo que ele acabou de plugar. Por isso o texto de "nenhum aparelho" começa
 pelo celular e só depois menciona o cabo, e isso está protegido por
 `TestNoDeviceChecksPhoneBeforeCable`.
 
-Para a v1.1 vale enumerar dispositivos USB por plataforma
-(`/sys/bus/usb/devices` no Linux, `SPUSBDataType` no macOS, PnP no Windows) e
-mostrar um texto específico. É a melhoria de maior valor por hora de
-trabalho que resta, porque é o caso de falha mais comum que existe.
+Decisão, implementada: o Reflexo **enuncia** a diferença quando o sistema
+prova, e **se cala** quando não prova. Onde não há prova confiável, o texto
+antigo continua — que é a escolha honesta, não uma falta.
 
+Onde a prova é possível hoje — Windows, sem privilégio e sem subprocesso:
+
+| Sinal | Onde se lê | O que significa |
+|---|---|---|
+| `Class_ff&SubClass_42&Prot_01` | `SPDRP_COMPATID` de cada interface presente | A interface ADB está no ar: o celular está bem e o problema é o adb |
+| `Class_06&SubClass_01&Prot_01` **e** VID de fabricante Android | idem | Há celular na mesa com a depuração desligada |
+| nada dos dois | — | nada de Android no barramento |
+
+Os dois marcadores foram medidos nesta máquina, em dois aparelhos de
+fabricantes diferentes: um Samsung SM-A556E (VID_04e8) e um Redmi Pad 2
+(VID_2717). E o detalhe que quase passou: o Samsung registra
+`Class_FF&SubClass_42` e a Xiaomi registra `Class_ff&SubClass_42`. A comparação
+é insensível a caixa por causa disso, e
+`TestMarkerMatchingIsCaseInsensitive` existe para manter isso verdadeiro — é a
+forma que esse bug costuma ter: funciona no aparelho do desenvolvedor.
+
+Duas tentativas anteriores estão registradas em `usb_windows.go` porque cada
+uma parece correta e não é:
+
+1. **Enumerar a interface ADB pela classe do SetupAPI não devolve nada útil.**
+   O Windows registra-a na classe genérica `USBDevice` {88bae032-…}; "ADB
+   Interface" é apenas um nome amigável que o driver instala, não uma classe.
+2. **Subir até o dispositivo pai para perguntar se o compósito está completo
+   falha aqui por um motivo que não tem nada a ver com USB.** A instância pai
+   reporta `Present: False` enquanto as próprias filhas reportam
+   `Present: True`, numa máquina saudável com celular plugado. O que for isso,
+   não serve para sustentar uma mensagem.
+
+Uma terceira armadilha, descoberta ao implementar: a árvore USB do Windows
+guarda **todo aparelho que a máquina já viu**. O Redmi Note 9S, plugado há
+meses, ainda está lá com a lista inteira de interfaces. `DIGCF_PRESENT` não é
+otimização, é o que faz o detector funcionar — sem essa flag o fantasma basta
+para o Reflexo anunciar um celular que não está na mesa.
+
+A lista de fabricantes é **whitelist, e a direção da falha é a própria
+decisão**. Fabricante fora da lista faz o Reflexo voltar ao "nenhum celular" de
+antes, que é um erro cosmético. Fabricante dentro por engano faria o Reflexo
+chamar a câmera digital do usuário de celular e mandar alguém procurar uma
+opção de depuração que não existe. Subafirmar incomoda; sobreafirmar faz o
+usuário desconfiar da tela. MTP não é invenção do Android — câmeras,
+players e e-readers também falam MTP, e é por isso que o marcador sozinho não
+basta.
+
+Custo real, medido: **~11ms por varredura** com 121 dispositivos presentes. Só
+roda quando o adb respondeu e não viu nada, ou seja, enquanto o usuário está
+ocioso esperando um celular. **Não há cache**: cache seria estado a invalidar
+para uma economia que a medição não pediu.
+
+O probe é consultado em exatamente um lugar, `a.debuggingOff()`, no caminho em
+que o adb está saudável e a lista saiu vazia. Nos outros, quem tem a resposta é
+a máquina de saúde do adb, e acusar o celular ali seria palpite.
+`TestTheProbeIsNeverAskedWhenItCouldNotBeTrusted` trava os três pontos.
+
+Ainda não implementado: macOS e Linux, que continuam devolvendo `UsbUnknown` e
+mantêm o texto antigo. A receita completa, com os números de classe que
+valem, está em `usb_other.go`. Celular Android de fabricante fora da lista
+também cai no texto antigo — por construção, não por acidente.
 ### ADR-0008 — Modo demonstração
 
 Quase ninguém que abre o Reflexo tem um celular Android plugado. O que essa

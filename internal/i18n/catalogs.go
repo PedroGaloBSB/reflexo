@@ -20,6 +20,14 @@ var english = Catalog{
 	"guide.no_device.step4": "Accept the \"Allow USB debugging?\" prompt on the phone.",
 	"guide.no_device.step5": "No prompt? Try another USB port — some front-panel ports only charge.",
 
+	// guide: the phone is there, the debugging option is not
+	"guide.debugging_off.headline": "Your phone is connected, but USB debugging is off",
+	"guide.debugging_off.detail": "Reflexo can see the phone on the cable, but the phone is " +
+		"not letting it in: the debugging option is not enabled yet. The cable is fine.",
+	"guide.debugging_off.step1": "On the phone, open Settings and search for \"Developer options\".",
+	"guide.debugging_off.step2": "Turn on \"USB debugging\". If the option is not listed, tap \"Build number\" 7 times under About phone to unlock it.",
+	"guide.debugging_off.step3": "Unlock the screen, unplug the cable and plug it back in. The authorisation prompt follows a second later.",
+
 	// guide: neutral wait on cold launch
 	"guide.starting.headline": "Getting Reflexo ready",
 	"guide.starting.detail": "Checking for a connected phone. This can take a few seconds — your phone " +
@@ -173,6 +181,14 @@ var portugueseBrazil = Catalog{
 	"guide.no_device.step3": "Desbloqueie a tela, tire o cabo e recoloque.",
 	"guide.no_device.step4": "Aceite o aviso \"Permitir depuração USB?\" que aparecer no celular.",
 	"guide.no_device.step5": "Sem aviso? Troque de porta USB — algumas da frente do computador só carregam.",
+
+	// guide: o celular esta ai, a opcao de depuracao nao
+	"guide.debugging_off.headline": "O celular está conectado, mas a Depuração USB está desligada",
+	"guide.debugging_off.detail": "O Reflexo enxerga o celular no cabo, mas o aparelho ainda não " +
+		"deixou o Reflexo entrar: a opção de depuração não está ligada. O cabo está bom.",
+	"guide.debugging_off.step1": "No celular, abra Ajustes e procure \"Opções do desenvolvedor\".",
+	"guide.debugging_off.step2": "Ligue \"Depuração USB\". Se a opção não aparecer, toque 7 vezes em \"Número da build\", em Ajustes › Sobre o telefone.",
+	"guide.debugging_off.step3": "Desbloqueie a tela, tire o cabo e recoloque. O aviso de autorização vem logo em seguida.",
 
 	// Estado neutro na inicializacao a frio
 	"guide.starting.headline": "Preparando o Reflexo",

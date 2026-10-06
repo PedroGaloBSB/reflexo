@@ -95,7 +95,14 @@ func (a *App) checkADB(ctx context.Context, devices []device.Device, listErr err
 		}
 
 		a.adbHealthy()
-		return guide.Situation{Devices: devices, ADBAvailable: true}
+		// DebuggingOff is the one case adb cannot express. Its empty list is
+		// truthful in both "nothing plugged in" and "plugged in with debugging
+		// switched off", and only the USB bus can tell those apart.
+		return guide.Situation{
+			Devices:      devices,
+			ADBAvailable: true,
+			DebuggingOff: len(devices) == 0 && a.debuggingOff(),
+		}
 	}
 
 	kind := device.Classify(listErr, "")

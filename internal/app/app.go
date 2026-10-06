@@ -156,6 +156,10 @@ type App struct {
 	// instruction happens to be the same.
 	lastDeviceSig string
 
+	// lastUsbSig is what the USB bus looked like on the previous probe, so the
+	// probe is logged on change rather than every poll.
+	lastUsbSig string
+
 	scrcpy *exec.Cmd
 
 	// launch builds the mirroring command. Nil means launchScrcpy; tests
@@ -165,6 +169,15 @@ type App struct {
 	// demo is non-nil while the demonstration is playing. It is a fallback for
 	// the absence of a phone, never an override of a present one.
 	demo *demoRun
+
+	// usbProbe reports what the USB bus shows independently of adb. Nil means
+	// device.UsbAndroidState.
+	//
+	// It is a field rather than a direct call for the same reason launch is:
+	// the answer depends on what is physically plugged into the machine running
+	// the test, so a test that called it directly would be asserting about the
+	// developer's desk instead of about the code.
+	usbProbe func() device.UsbState
 }
 
 // StartDemo begins the demonstration and returns immediately.

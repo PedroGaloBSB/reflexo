@@ -107,6 +107,11 @@ type Situation struct {
 	// presenting "ADB indisponível" or an empty "no phone" telling lands on
 	// every first impression. It is the neutral wait, not a broken state.
 	Starting bool
+
+	// DebuggingOff is set when the probe confirms a phone is plugged in via
+	// USB but is not showing the ADB interface — the physical phone is exactly
+	// the case that "nenhum celular" used to deny.
+	DebuggingOff bool
 }
 
 // Of returns the instruction for a situation, in the given language.
@@ -132,6 +137,12 @@ func Of(s Situation, lang i18n.Lang) Instruction {
 
 	switch len(s.Devices) {
 	case 0:
+		// A plugged phone that refuses to advertise ADB is a different problem
+		// from no phone at all, and it is the specific failure where "no phone"
+		// makes the user doubt what is in front of them.
+		if s.DebuggingOff {
+			return debuggingOff(lang)
+		}
 		return noDevice(lang)
 	case 1:
 		return forDevice(s.Devices[0], lang)
@@ -165,6 +176,24 @@ func noDevice(lang i18n.Lang) Instruction {
 			"guide.no_device.step3",
 			"guide.no_device.step4",
 			"guide.no_device.step5",
+		),
+	}
+}
+
+// debuggingOff is the specific case that "nenhum celular" used to get wrong: a
+// phone IS plugged in, but because USB debugging is off it does not show up in
+// adb. Denying that the phone is there is the one message guaranteed to make a
+// user look away from the program and down at the screen. The headline accepts
+// this exact case and steers at the fix.
+func debuggingOff(lang i18n.Lang) Instruction {
+	return Instruction{
+		Severity: SeverityAction,
+		Headline: i18n.T(lang, "guide.debugging_off.headline"),
+		Detail:   i18n.T(lang, "guide.debugging_off.detail"),
+		Steps: steps(lang,
+			"guide.debugging_off.step1",
+			"guide.debugging_off.step2",
+			"guide.debugging_off.step3",
 		),
 	}
 }
