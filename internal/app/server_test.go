@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -118,5 +119,72 @@ func TestFaviconIsTheSameBytesAsWhatTheShortcutUses(t *testing.T) {
 			t.Fatalf("o corpo servido contem 0x%02X, que nao veio do arquivo embutido; "+
 				"a rota esta servindo outra coisa", b)
 		}
+	}
+}
+
+// TestFaviconRevalidatesInsteadOfCachingBlind guards the header that broke the
+// icon for the user.
+//
+// It was "public, max-age=86400". Chrome had cached the generic globe from a
+// version with no icon, so the change appeared to do nothing for a day. A test
+// cannot see a browser cache, but it can state the requirement: the response
+// must never authorize blind reuse.
+func TestFaviconRevalidatesInsteadOfCachingBlind(t *testing.T) {
+	h := newRouteServer(t, fakeIcon([]byte{0x01, 0x02, 0x03}))
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/favicon.ico", nil))
+
+	cc := rec.Header().Get("Cache-Control")
+	if strings.Contains(cc, "max-age") || strings.Contains(cc, "immutable") {
+		t.Errorf("Cache-Control = %q; o icone nao pode autorizar reuso cego, "+
+			"senao uma mudanca de icone demora um dia para aparecer", cc)
+	}
+	if rec.Header().Get("ETag") == "" {
+		t.Error("favicon sem ETag; sem ele o no-cache vira reenvio do arquivo inteiro sempre")
+	}
+}
+
+// TestFaviconAnswersRevalidationWithNotModified proves the cache path actually
+// saves the transfer, which is the reason ETag exists here rather than just
+// no-store.
+func TestFaviconAnswersRevalidationWithNotModified(t *testing.T) {
+	h := newRouteServer(t, fakeIcon([]byte{0x01, 0x02, 0x03}))
+
+	first := httptest.NewRecorder()
+	h.ServeHTTP(first, httptest.NewRequest("GET", "/favicon.ico", nil))
+	etag := first.Header().Get("ETag")
+	if etag == "" {
+		t.Fatal("primeira resposta sem ETag")
+	}
+
+	req := httptest.NewRequest("GET", "/favicon.ico", nil)
+	req.Header.Set("If-None-Match", etag)
+	second := httptest.NewRecorder()
+	h.ServeHTTP(second, req)
+
+	if second.Code != http.StatusNotModified {
+		t.Errorf("revalidacao devolveu %d; esperava 304", second.Code)
+	}
+	if second.Body.Len() != 0 {
+		t.Errorf("a resposta 304 carregou %d bytes; ela nao deve carregar corpo", second.Body.Len())
+	}
+}
+
+// TestFaviconChangesETagWhenTheIconChanges is the part that actually matters to
+// the user: a new face must not be served from a stale validator.
+func TestFaviconChangesETagWhenTheIconChanges(t *testing.T) {
+	body := []byte{0x0A, 0x0B}
+
+	old := httptest.NewRecorder()
+	newRouteServer(t, fakeIcon(body)).ServeHTTP(old, httptest.NewRequest("GET", "/favicon.ico", nil))
+
+	body = []byte{0x0C, 0x0D, 0x0E}
+	fresh := httptest.NewRecorder()
+	newRouteServer(t, fakeIcon(body)).ServeHTTP(fresh, httptest.NewRequest("GET", "/favicon.ico", nil))
+
+	if old.Header().Get("ETag") == fresh.Header().Get("ETag") {
+		t.Error("o ETag nao mudou quando os bytes do icone mudaram; " +
+			"o navegador passaria a exibir o icone antigo indefinidamente")
 	}
 }

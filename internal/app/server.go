@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
@@ -113,7 +114,7 @@ func (s *Server) routes() http.Handler {
 // it: making Reflexo own its window is the WebView2 dependency ADR-0002 exists
 // to avoid. What can be fixed is the tab, so that it stops showing a generic
 // globe next to a name the user chose.
-func (s *Server) handleFavicon(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleFavicon(w http.ResponseWriter, r *http.Request) {
 	body, err := fs.ReadFile(s.icon, "assets/icon/icon.ico")
 	if err != nil {
 		// A missing icon must never take the page down with it.
@@ -121,12 +122,29 @@ func (s *Server) handleFavicon(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
+	// Revalidate, never cache blind.
+	//
+	// This started as "public, max-age=86400" and it was wrong in a way only
+	// the user could see. Chrome had already cached the generic globe from a
+	// version that shipped no icon at all, and a one-day lifetime meant the fix
+	// appeared not to work — the tab kept showing the old face for a day after
+	// the change was installed. An icon the user just asked to change is the
+	// worst possible candidate for a long cache.
+	//
+	// The ETag costs one hash of 14KB over loopback and turns the repeat
+	// request into a 304 with no body, so nothing is really re-sent.
+	sum := sha256.Sum256(body)
+	etag := `"` + hex.EncodeToString(sum[:8]) + `"`
+
+	w.Header().Set("ETag", etag)
 	w.Header().Set("Content-Type", "image/x-icon")
-	// The icon changes only when the product's face changes, and the browser
-	// caches favicons aggressively enough that a stale one outlives the session
-	// that asked for it. One day is long enough to help and short enough to
-	// disappear on the next release.
-	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Header().Set("Cache-Control", "no-cache")
+
+	if match := r.Header.Get("If-None-Match"); match != "" && strings.Contains(match, etag) {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
 	_, _ = w.Write(body)
 }
 
