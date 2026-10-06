@@ -3,11 +3,20 @@
 /reflexo.exe
 *.exe
 
-# ATENCAO: rsrc.syso NAO e ignorado de proposito.
-# Ele e o recurso de icone que o Go linka no executavel. Sem ele no
-# repositorio, o binario de release sai sem icone no Windows. Regenerar com:
+# ATENCAO: os recursos de icone NAO sao ignorados de proposito.
+# Eles sao o que o Go linka no executavel. Sem eles no repositorio, o binario
+# de release sai sem icone no Windows. Regenerar com:
 #   go install github.com/akavel/rsrc@latest
-#   rsrc -ico assets\icon\icon.ico -o rsrc.syso
+#   rsrc -arch amd64 -ico assets\icon\icon.ico -o rsrc_windows_amd64.syso
+#   rsrc -arch 386   -ico assets\icon\icon.ico -o rsrc_windows_386.syso
+#
+# O sufixo _windows_<arch> no nome NAO e decoracao: e ele que faz o Go escolher
+# o recurso certo por arquitetura. Sem o sufixo, o arquivo amd64 entra tambem
+# no build 386 e o linkador falha com "unknown relocation type 3" - o que
+# quebrou o alvo windows-386 do release inteiro.
+#
+# Por isso regenere os DOIS. Se apenas o amd64 for regerado, o 386 continua
+# compilando e apenas sai sem icone, que e uma regressao silenciosa.
 
 # Go
 *.test
